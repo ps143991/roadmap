@@ -22,7 +22,7 @@ from gi.repository import Gdk, Gio, GLib, WebKit2
 original_hashes = {'examples/starter-roadmap.json': hashlib.sha256((ROOT / 'examples/starter-roadmap.json').read_bytes()).hexdigest()}
 temporary = tempfile.TemporaryDirectory(prefix='roadmap-features-check-')
 test_root = Path(temporary.name)
-for name in ['roadmap_these.html', 'roadmap_features.js', 'gantt.html', 'roadmap.svg']:
+for name in ['roadmap_these.html', 'roadmap_features.js', 'gantt.html', 'roadmap.svg', 'roadmap.png']:
     shutil.copy2(ROOT / name, test_root / name)
 shutil.copytree(ROOT / 'vendor', test_root / 'vendor')
 roadmap_server.ROOT = test_root

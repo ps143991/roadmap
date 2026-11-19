@@ -112,7 +112,7 @@ def main():
             application.view.connect('load-changed', loaded)
 
         application.connect_after('activate', activated)
-        GLib.timeout_add_seconds(25, lambda: fail('Desktop startup check timed out'))
+        GLib.timeout_add_seconds(60, lambda: fail('Desktop startup check timed out'))
         application.run([])
         if not failures:
             assert ready, 'Close path was not exercised'

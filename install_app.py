@@ -45,7 +45,7 @@ def install(desktop=False):
     launchers = data_home / 'applications'
     launchers.mkdir(parents=True, exist_ok=True)
     launcher = launchers / 'org.thesisroadmap.App.desktop'
-    launcher.write_text(desktop_entry(destination / 'start_roadmap.sh', destination / 'roadmap.svg'))
+    launcher.write_text(desktop_entry(destination / 'start_roadmap.sh', destination / 'roadmap.png'))
     launcher.chmod(0o644)
     if desktop:
         desktop_path = subprocess.check_output(['xdg-user-dir', 'DESKTOP'], text=True).strip()

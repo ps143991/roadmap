@@ -48,7 +48,7 @@ class RoadmapApp(Gtk.Application):
 
         self.window = Gtk.ApplicationWindow(application=self, title="Thesis Roadmap")
         self.window.set_default_size(1440, 960)
-        self.window.set_icon_from_file(str(ROOT / "roadmap.svg"))
+        self.window.set_icon_from_file(str(ROOT / "roadmap.png"))
         self.window.connect("delete-event", self.request_close)
         self.window.connect("key-press-event", self.zoom_key)
 
