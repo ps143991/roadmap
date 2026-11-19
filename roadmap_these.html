@@ -1509,15 +1509,13 @@
         }
 
         function toggleCollapsed(d) {
-            if (d.depth === 1 && thesisData.children) {
-                thesisData.children.forEach(child => {
+            if (collapsedIds.has(d.data.id)) {
+                const siblings = d.parent?.data.children || [];
+                siblings.forEach(child => {
                     if (child.id !== d.data.id && (child.children || []).length > 0) {
                         collapsedIds.add(child.id);
                     }
                 });
-            }
-
-            if (collapsedIds.has(d.data.id)) {
                 collapsedIds.delete(d.data.id);
             } else {
                 collapsedIds.add(d.data.id);

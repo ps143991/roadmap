@@ -89,7 +89,7 @@ $$\bar{x} = \frac{1}{n} \sum_{i=1}^{n} x_i$$
 
 ## Broad Features
 
-- Double-click a branch to expand it or collapse it again.
+- Double-click a branch to expand it or collapse it again. Opening one branch folds away its siblings' children.
 - Click a branch to edit its name, description, dates, priority, and notes.
 - Hold and drag a branch left or right to put it in the order you prefer. Its smaller branches stay attached.
 - Zoom in or out with Ctrl + scroll or Ctrl + plus/minus. Press Ctrl+0 to return to the normal size.

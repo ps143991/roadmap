@@ -18,6 +18,7 @@ sys.path.insert(0, str(ROOT))
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--screenshot', type=Path)
+    parser.add_argument('--frontend-root', type=Path, help='Serve an explicitly selected frontend while using temporary test data')
     options = parser.parse_args()
     with tempfile.TemporaryDirectory(prefix='roadmap-first-launch-') as temporary:
         profile = Path(temporary)
@@ -26,6 +27,9 @@ def main():
         os.environ['XDG_CONFIG_HOME'] = str(profile / 'config')
         os.environ['GSETTINGS_BACKEND'] = 'memory'
         import roadmap_app
+        import roadmap_server
+        if options.frontend_root:
+            roadmap_server.ROOT = options.frontend_root.resolve()
         from gi.repository import Gio, GLib, WebKit2
         data = profile / 'share/thesis-roadmap/data'
         application = roadmap_app.RoadmapApp(0, data_dir=data)
@@ -65,7 +69,7 @@ def main():
             if message['kind'] == 'error':
                 fail(message['message'])
             elif message['kind'] == 'ready':
-                print('PASS: Fresh generic roadmap, six chapters, live equations, and independent autosave', flush=True)
+                print('PASS: Second/third/fourth-level accordion, generic roadmap, live equations, and independent autosave', flush=True)
                 if options.screenshot:
                     take_snapshot()
                 else:
@@ -85,6 +89,49 @@ def main():
                     assert(thesisData?.name === 'My Thesis', 'Fresh profile did not use the generic starter');
                     assert(thesisData.children.length === 6, 'Starter chapter structure is missing');
                     assert(document.querySelectorAll('g.node').length === 7, 'Map failed to render');
+                    // Regression: accordion expansion must work below the second level.
+                    const originalData = thesisData;
+                    const originalCollapsed = [...collapsedIds];
+                    const leaf = id => ({id, name:id, type:'task', children:[]});
+                    const deep = id => ({id, name:id, children:[leaf(id + '-leaf')]});
+                    const section = id => ({id, name:id, children:[deep(id + '-left'), deep(id + '-right')]});
+                    thesisData = {id:'accordion-root', name:'Accordion test', children:[
+                        {id:'parent-a', name:'Parent A', children:[section('section-a'), section('section-b')]},
+                        {id:'parent-b', name:'Parent B', children:[section('section-c'), section('section-d')]}
+                    ]};
+                    normalizeData(thesisData);
+                    selectedNodeId = thesisData.id;
+                    collapseAll();
+                    const visible = id => root.descendants().some(d => d.data.id === id);
+                    const doubleClick = id => {
+                        const element = [...document.querySelectorAll('g.node')].find(e => e.__data__.data.id === id);
+                        assert(element, 'Missing visible branch ' + id);
+                        element.dispatchEvent(new MouseEvent('dblclick', {bubbles:true}));
+                    };
+                    doubleClick('parent-a');
+                    doubleClick('parent-b');
+                    assert(!visible('section-a') && visible('section-c'), 'Second-level accordion changed');
+                    doubleClick('parent-a');
+                    doubleClick('section-a');
+                    assert(visible('section-a-left'), 'Third-level branch did not expand');
+                    doubleClick('section-b');
+                    assert(!visible('section-a-left') && visible('section-b-left'), 'Third-level sibling stayed expanded');
+                    doubleClick('section-b-left');
+                    assert(visible('section-b-left-leaf'), 'Fourth-level branch did not expand');
+                    doubleClick('section-b-right');
+                    assert(!visible('section-b-left-leaf') && visible('section-b-right-leaf'), 'Fourth-level sibling stayed expanded');
+                    doubleClick('section-b-right');
+                    assert(!visible('section-b-right-leaf') && visible('section-b-left'), 'Collapsing a branch affected its parent');
+                    expandAll();
+                    assert(root.descendants().length === flattenData(thesisData).length, 'Expand All no longer shows the whole map');
+                    doubleClick('section-a');
+                    doubleClick('section-a');
+                    assert(!visible('section-b-left') && visible('section-c-left'), 'Opening a branch collapsed unrelated parents or kept a sibling open');
+                    thesisData = originalData;
+                    selectedNodeId = thesisData.id;
+                    collapsedIds = new Set(originalCollapsed);
+                    renderAll(false);
+                    console.log('Accordion checks passed at the second, third, and fourth levels.');
                     document.getElementById('notes-panel').open = true;
                     const notes = document.getElementById('field-notes');
                     const starterNotes = notes.value;
