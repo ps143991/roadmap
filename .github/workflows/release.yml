@@ -1,0 +1,20 @@
+name: Release
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: write
+jobs:
+  package:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify tag and build portable installer
+        run: |
+          test "$GITHUB_REF_NAME" = "v$(cat VERSION)"
+          python3 build_release.py
+      - name: Publish installer and checksum
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/*.tar.gz dist/*.sha256 --title "Thesis Roadmap $GITHUB_REF_NAME" --notes "Download the archive, extract it, and run: bash install.sh. The installer adds the app to your applications menu and keeps thesis data separate from program files."

@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thesis Gantt</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --bg: #eef3f8;
+            --surface: #ffffff;
+            --surface-soft: #f7fafc;
+            --border: #d9e2ec;
+            --text: #102a43;
+            --muted: #627d98;
+            --blue: #2563eb;
+            --green: #059669;
+            --amber: #d97706;
+            --red: #dc2626;
+            --shadow: 0 12px 30px rgba(16, 42, 67, 0.12);
+        }
+
+        body {
+            min-height: 100vh;
+            background: var(--bg);
+            color: var(--text);
+            font-family: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+            line-height: 1.5;
+        }
+
+        .app-shell {
+            width: calc(100% - 32px);
+            margin: 16px auto;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
+
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 18px;
+            padding: 22px 28px;
+            background: #102a43;
+            color: #ffffff;
+        }
+
+        .topbar h1 {
+            font-size: 1.75rem;
+            letter-spacing: 0;
+        }
+
+        .topbar p {
+            color: #bcccdc;
+            margin-top: 2px;
+        }
+
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 38px;
+            padding: 8px 14px;
+            border-radius: 6px;
+            background: #e6edf5;
+            color: var(--text);
+            font: inherit;
+            font-size: 0.92rem;
+            font-weight: 650;
+            text-decoration: none;
+            border: 0;
+            cursor: pointer;
+            transition: background 0.18s ease, transform 0.18s ease;
+        }
+
+        .btn:hover {
+            background: #d9e2ec;
+            transform: translateY(-1px);
+        }
+
+        .btn-primary {
+            background: var(--blue);
+            color: #ffffff;
+        }
+
+        .btn-primary:hover {
+            background: #1d4ed8;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(150px, 1fr));
+            gap: 12px;
+            padding: 18px;
+            background: var(--surface-soft);
+        }
+
+        .stat-card {
+            min-height: 88px;
+            padding: 14px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: #ffffff;
+        }
+
+        .stat-card h2 {
+            color: var(--muted);
+            font-size: 0.75rem;
+            font-weight: 750;
+            letter-spacing: 0;
+            text-transform: uppercase;
+        }
+
+        .stat-card .value {
+            margin-top: 6px;
+            font-size: 1.75rem;
+            font-weight: 800;
+        }
+
+        .timeline-wrap {
+            padding: 0 18px 18px;
+            background: var(--surface-soft);
+        }
+
+        .timeline {
+            min-width: 980px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: #ffffff;
+            overflow: auto;
+        }
+
+        .timeline-grid {
+            position: relative;
+            display: grid;
+            grid-template-columns: 300px minmax(680px, 1fr);
+        }
+
+        .timeline-header {
+            position: sticky;
+            top: 0;
+            z-index: 3;
+            display: contents;
+        }
+
+        .header-cell {
+            min-height: 48px;
+            border-bottom: 1px solid var(--border);
+            background: #ffffff;
+        }
+
+        .label-header {
+            padding: 14px 16px;
+            color: var(--muted);
+            font-size: 0.78rem;
+            font-weight: 750;
+            text-transform: uppercase;
+            border-right: 1px solid var(--border);
+        }
+
+        .chart-header {
+            position: relative;
+            min-height: 48px;
+        }
+
+        .tick {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            border-left: 1px solid #e6edf5;
+            color: var(--muted);
+            font-size: 0.74rem;
+            font-weight: 650;
+            padding-left: 6px;
+            padding-top: 14px;
+            white-space: nowrap;
+        }
+
+        .timeline-row {
+            display: contents;
+        }
+
+        .row-label {
+            min-height: 58px;
+            padding: 11px 16px;
+            border-right: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+            background: #ffffff;
+        }
+
+        .row-label strong {
+            display: block;
+            font-size: 0.94rem;
+            line-height: 1.25;
+        }
+
+        .row-label span {
+            display: block;
+            color: var(--muted);
+            font-size: 0.78rem;
+            margin-top: 2px;
+        }
+
+        .row-chart {
+            position: relative;
+            min-height: 58px;
+            border-bottom: 1px solid var(--border);
+            background-image: linear-gradient(to right, #eef3f8 1px, transparent 1px);
+            background-size: 8.333% 100%;
+        }
+
+        .bar {
+            position: absolute;
+            top: 15px;
+            min-width: 10px;
+            height: 28px;
+            border-radius: 6px;
+            color: #ffffff;
+            font-size: 0.78rem;
+            font-weight: 750;
+            line-height: 28px;
+            overflow: hidden;
+            padding: 0 10px;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+        }
+
+        .bar.completed {
+            background: var(--green);
+        }
+
+        .bar.in-progress {
+            background: var(--amber);
+        }
+
+        .bar.not-started {
+            background: var(--red);
+        }
+
+        .empty-state {
+            margin: 18px;
+            border: 1px dashed var(--border);
+            border-radius: 8px;
+            background: #ffffff;
+            color: var(--muted);
+            padding: 18px;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            min-height: 22px;
+            margin-top: 6px;
+            padding: 2px 8px;
+            border-radius: 999px;
+            background: #e6edf5;
+            color: var(--text);
+            font-size: 0.72rem;
+            font-weight: 750;
+        }
+
+        .badge.high {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .badge.medium {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .badge.low {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        @media (max-width: 760px) {
+            .app-shell {
+                width: 100%;
+                margin: 0;
+                border-radius: 0;
+                border-left: 0;
+                border-right: 0;
+            }
+
+            .topbar {
+                align-items: stretch;
+                flex-direction: column;
+                padding: 18px;
+            }
+
+            .controls {
+                justify-content: stretch;
+            }
+
+            .btn {
+                flex: 1 1 140px;
+            }
+
+            .stats {
+                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+                padding: 14px;
+            }
+
+            .timeline-wrap {
+                padding: 0 14px 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-shell">
+        <header class="topbar">
+            <div>
+                <h1>Thesis Gantt</h1>
+                <p id="source-label">Timeline</p>
+            </div>
+            <div class="controls">
+                <a class="btn" href="roadmap_these.html">Roadmap</a>
+                <button class="btn btn-primary" id="export-data" type="button">Export</button>
+            </div>
+        </header>
+
+        <section class="stats" id="stats"></section>
+        <section class="timeline-wrap" id="timeline-wrap"></section>
+    </div>
+
+    <script>
+        const STORAGE_KEY = 'thesisRoadmap';
+        const STATUS_LABELS = {
+            'not-started': 'Not Started',
+            'in-progress': 'In Progress',
+            completed: 'Completed'
+        };
+        const PRIORITY_LABELS = {
+            low: 'Low',
+            medium: 'Medium',
+            high: 'High'
+        };
+        const DAY = 24 * 60 * 60 * 1000;
+
+        let roadmapData = null;
+
+        function escapeHTML(value) {
+            return String(value ?? '').replace(/[&<>"']/g, char => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            })[char]);
+        }
+
+        function normalizeData(node) {
+            if (!node || typeof node !== 'object') {
+                return;
+            }
+            node.children = Array.isArray(node.children) ? node.children : [];
+            node.status = STATUS_LABELS[node.status] ? node.status : 'not-started';
+            node.priority = PRIORITY_LABELS[node.priority] ? node.priority : 'medium';
+            node.children.forEach(normalizeData);
+        }
+
+        function flattenData(node, path = []) {
+            const nextPath = [...path, node.name || 'Untitled'];
+            const rows = [{ node, path: nextPath, isLeaf: !(node.children || []).length }];
+            (node.children || []).forEach(child => {
+                rows.push(...flattenData(child, nextPath));
+            });
+            return rows;
+        }
+
+        function parseDate(value) {
+            if (!value) {
+                return null;
+            }
+            const date = new Date(`${value}T00:00:00`);
+            return Number.isNaN(date.getTime()) ? null : date;
+        }
+
+        function formatDate(value) {
+            const date = parseDate(value);
+            if (!date) {
+                return 'No date';
+            }
+            return new Intl.DateTimeFormat(undefined, {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric'
+            }).format(date);
+        }
+
+        function formatMonth(date) {
+            return new Intl.DateTimeFormat(undefined, {
+                month: 'short',
+                year: 'numeric'
+            }).format(date);
+        }
+
+        function daysBetween(start, end) {
+            return Math.max(0, Math.round((end - start) / DAY));
+        }
+
+        function buildTimelineItems() {
+            return flattenData(roadmapData)
+                .filter(row => row.node.type !== 'root')
+                .map(row => {
+                    const start = parseDate(row.node.start) || parseDate(row.node.deadline);
+                    const end = parseDate(row.node.deadline) || parseDate(row.node.start);
+                    return { ...row, start, end };
+                })
+                .filter(row => row.start && row.end)
+                .sort((a, b) => a.start - b.start || a.end - b.end);
+        }
+
+        function renderStats(items) {
+            const leaves = flattenData(roadmapData).filter(row => row.node.type !== 'root' && row.isLeaf);
+            const completed = leaves.filter(row => row.node.status === 'completed').length;
+            const progress = leaves.length ? Math.round((completed / leaves.length) * 100) : 0;
+            const high = leaves.filter(row => row.node.priority === 'high' && row.node.status !== 'completed').length;
+            const latest = items.reduce((max, item) => item.end > max ? item.end : max, items[0]?.end || new Date());
+
+            document.getElementById('stats').innerHTML = `
+                <article class="stat-card">
+                    <h2>Progress</h2>
+                    <div class="value">${progress}%</div>
+                </article>
+                <article class="stat-card">
+                    <h2>Items</h2>
+                    <div class="value">${items.length}</div>
+                </article>
+                <article class="stat-card">
+                    <h2>High Priority</h2>
+                    <div class="value">${high}</div>
+                </article>
+                <article class="stat-card">
+                    <h2>Last Deadline</h2>
+                    <div class="value" style="font-size: 1.1rem;">${escapeHTML(formatDate(latest.toISOString().slice(0, 10)))}</div>
+                </article>
+            `;
+        }
+
+        function buildTicks(start, end) {
+            const ticks = [];
+            const cursor = new Date(start.getFullYear(), start.getMonth(), 1);
+            while (cursor <= end) {
+                ticks.push(new Date(cursor));
+                cursor.setMonth(cursor.getMonth() + 1);
+            }
+            return ticks;
+        }
+
+        function renderTimeline(items) {
+            const wrap = document.getElementById('timeline-wrap');
+            if (!items.length) {
+                wrap.innerHTML = '<div class="empty-state">No dated roadmap items yet.</div>';
+                return;
+            }
+
+            const start = new Date(Math.min(...items.map(item => item.start.getTime())));
+            const end = new Date(Math.max(...items.map(item => item.end.getTime())));
+            start.setDate(start.getDate() - 3);
+            end.setDate(end.getDate() + 7);
+            const span = Math.max(1, daysBetween(start, end));
+            const ticks = buildTicks(start, end);
+
+            const tickHtml = ticks.map(tick => {
+                const left = (daysBetween(start, tick) / span) * 100;
+                return `<span class="tick" style="left: ${left}%;">${escapeHTML(formatMonth(tick))}</span>`;
+            }).join('');
+
+            const rows = items.map(item => {
+                const safeStart = item.start <= item.end ? item.start : item.end;
+                const safeEnd = item.end >= item.start ? item.end : item.start;
+                const left = (daysBetween(start, safeStart) / span) * 100;
+                const width = Math.max(1.5, (Math.max(1, daysBetween(safeStart, safeEnd) + 1) / span) * 100);
+                const labelPath = item.path.slice(0, -1).join(' / ');
+                return `
+                    <div class="timeline-row">
+                        <div class="row-label">
+                            <strong>${escapeHTML(item.node.name)}</strong>
+                            <span>${escapeHTML(labelPath)}</span>
+                            <span>${escapeHTML(formatDate(item.node.start))} to ${escapeHTML(formatDate(item.node.deadline))}</span>
+                            <span class="badge ${item.node.priority}">${PRIORITY_LABELS[item.node.priority]}</span>
+                        </div>
+                        <div class="row-chart">
+                            <div class="bar ${item.node.status}"
+                                style="left: ${left}%; width: ${width}%;"
+                                title="${escapeHTML(item.node.name)}: ${escapeHTML(STATUS_LABELS[item.node.status])}">
+                                ${escapeHTML(STATUS_LABELS[item.node.status])}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            wrap.innerHTML = `
+                <div class="timeline">
+                    <div class="timeline-grid">
+                        <div class="timeline-header">
+                            <div class="header-cell label-header">Roadmap Item</div>
+                            <div class="header-cell chart-header">${tickHtml}</div>
+                        </div>
+                        ${rows}
+                    </div>
+                </div>
+            `;
+        }
+
+        async function loadData() {
+            try {
+                const response = await fetch(`/api/roadmap?t=${Date.now()}`);
+                if (response.ok) {
+                    document.getElementById('source-label').textContent = 'Your saved roadmap';
+                    return response.json();
+                }
+            } catch (error) {
+                console.info('Roadmap API unavailable, checking browser storage:', error);
+            }
+
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) {
+                document.getElementById('source-label').textContent = 'Recovered local edits';
+                return JSON.parse(saved);
+            }
+
+            const response = await fetch(`/api/roadmap?t=${Date.now()}`);
+            if (!response.ok) {
+                throw new Error('Unable to load roadmap_data.json');
+            }
+            document.getElementById('source-label').textContent = 'Your saved roadmap';
+            return response.json();
+        }
+
+        function exportData() {
+            const dataStr = JSON.stringify(roadmapData, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'roadmap_data.json';
+            link.click();
+            URL.revokeObjectURL(url);
+        }
+
+        window.addEventListener('load', async () => {
+            document.getElementById('export-data').addEventListener('click', exportData);
+            try {
+                roadmapData = await loadData();
+                normalizeData(roadmapData);
+                const items = buildTimelineItems();
+                renderStats(items);
+                renderTimeline(items);
+            } catch (error) {
+                console.error(error);
+                document.getElementById('timeline-wrap').innerHTML = '<div class="empty-state">Unable to load the roadmap data.</div>';
+            }
+        });
+    </script>
+</body>
+</html>
