@@ -3,10 +3,40 @@
 An offline desktop app for planning and writing a thesis. Organize chapters and
 tasks as a map, set dates, take notes with live equations, and track progress.
 
-<details>
-<summary>Preview of the app</summary>
+## Preview
 
-![Thesis Roadmap with the generic starter plan and live Notes preview](docs/screenshot.png)
+Screenshots from the Linux desktop app using fictional example data.
+
+**Roadmap and details sidebar** — track progress and edit chapters, dates, and priorities.
+
+![Roadmap overview with progress statistics and the editable details sidebar](docs/roadmap-overview.png)
+
+<details>
+<summary>Expanded branches and a wider map</summary>
+
+Expand a chapter to see its tasks, and hide the sidebar to give the map more room.
+
+![Expanded literature-review tasks with the details sidebar hidden](docs/roadmap-expanded.png)
+
+</details>
+
+<details>
+<summary>Notes with live Markdown and LaTeX preview</summary>
+
+Write notes and equations alongside their rendered preview. The example equation
+and Broad Features guide are included in the starter Notes.
+
+![Notes editor beside the live Markdown and LaTeX preview, showing an equation and the Broad Features guide](docs/notes-latex.png)
+
+</details>
+
+<details>
+<summary>Gantt timeline</summary>
+
+See an example schedule with completed, active, and planned work, start dates,
+and deadlines.
+
+![Gantt timeline with example chapter and task dates and color-coded progress](docs/gantt-timeline.png)
 
 </details>
 
