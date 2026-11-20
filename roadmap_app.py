@@ -61,6 +61,8 @@ class RoadmapApp(Gtk.Application):
         manager.connect("script-message-received::roadmapClose", self.close_result)
         manager.register_script_message_handler("roadmapClose")
         self.view = WebKit2.WebView(web_context=context, user_content_manager=manager)
+        # Accelerated partial repaints can darken unchanged text when the caret moves.
+        self.view.get_settings().set_hardware_acceleration_policy(WebKit2.HardwareAccelerationPolicy.NEVER)
         self.view.connect("decide-policy", self.navigation_policy)
         self.view.connect("scroll-event", self.zoom_scroll)
         self.window.add(self.view)

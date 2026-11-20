@@ -190,6 +190,8 @@ python3 roadmap_server.py 8767 --data-dir /path/to/my-thesis-data --open
 The frontend is static HTML/CSS/JavaScript, backed by a Python standard-library
 HTTP server. The native window uses GTK/WebKit. Preview dependencies and their
 fonts are already in `vendor/`; no npm build step is needed to run the app.
+The native window uses software rendering to avoid WebKit accelerated repaint
+artifacts that can darken text as the caret moves.
 The cursor-based editor uses CodeMirror 6. From a repository checkout, rebuild its
 pinned offline bundle with `python3 tools/build_notes_editor.py` (network access
 is required).
@@ -211,6 +213,15 @@ separate startup check can run under Xvfb for CI:
 ```bash
 xvfb-run -a python3 tests/check_desktop_startup.py
 xvfb-run -a python3 tests/check_notes_editor.py
+xvfb-run -a python3 tests/check_notes_paint.py
+```
+
+The paint check compares actual window pixels while moving the caret through
+unchanged prose. Also run it in a real desktop session when investigating GPU
+rendering problems; CSS values and offscreen snapshots can miss those artifacts.
+
+```bash
+python3 tests/check_notes_paint.py --zoom 1.1
 ```
 
 Build the shareable installer archive:

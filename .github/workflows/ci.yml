@@ -21,3 +21,5 @@ jobs:
         run: dbus-run-session -- xvfb-run -a /usr/bin/python3 tests/check_desktop_startup.py
       - name: Cursor-local Notes, consistent text styling, and persistence
         run: dbus-run-session -- xvfb-run -a /usr/bin/python3 tests/check_notes_editor.py
+      - name: Stable on-screen Notes pixels while moving the caret
+        run: dbus-run-session -- xvfb-run -a /usr/bin/python3 tests/check_notes_paint.py
