@@ -19,3 +19,5 @@ jobs:
         run: /usr/bin/python3 -m unittest discover -s tests -v
       - name: Desktop startup with a clean profile
         run: dbus-run-session -- xvfb-run -a /usr/bin/python3 tests/check_desktop_startup.py
+      - name: Single-panel Notes editing and persistence
+        run: dbus-run-session -- xvfb-run -a /usr/bin/python3 tests/check_notes_editor.py

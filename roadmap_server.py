@@ -27,7 +27,7 @@ from roadmap_storage import default_data_directory, initialize_data
 ROOT = Path(__file__).resolve().parent
 DATA_FILE = default_data_directory() / "roadmap_data.json"
 BACKUP_FILE = DATA_FILE.with_name("roadmap_data.backup.json")
-STATIC_FILES = {"/roadmap_these.html", "/gantt.html", "/roadmap_features.js", "/roadmap.svg", "/roadmap.png"}
+STATIC_FILES = {"/roadmap_these.html", "/gantt.html", "/roadmap_features.js", "/notes_editor.js", "/roadmap.svg", "/roadmap.png"}
 MAX_BODY_SIZE = 5 * 1024 * 1024
 SAVE_LOCK = threading.Lock()
 SAVE_REVISIONS = {}

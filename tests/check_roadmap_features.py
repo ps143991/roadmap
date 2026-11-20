@@ -22,7 +22,7 @@ from gi.repository import Gdk, Gio, GLib, WebKit2
 original_hashes = {'examples/starter-roadmap.json': hashlib.sha256((ROOT / 'examples/starter-roadmap.json').read_bytes()).hexdigest()}
 temporary = tempfile.TemporaryDirectory(prefix='roadmap-features-check-')
 test_root = Path(temporary.name)
-for name in ['roadmap_these.html', 'roadmap_features.js', 'gantt.html', 'roadmap.svg', 'roadmap.png']:
+for name in ['roadmap_these.html', 'roadmap_features.js', 'notes_editor.js', 'gantt.html', 'roadmap.svg', 'roadmap.png']:
     shutil.copy2(ROOT / name, test_root / name)
 shutil.copytree(ROOT / 'vendor', test_root / 'vendor')
 roadmap_server.ROOT = test_root
@@ -124,7 +124,7 @@ Markdown *emphasis* and **bold**.
         check(!preview.querySelector('img, script, iframe') && !window.notesInjected, 'Preview executed or loaded raw HTML');
         check(![...preview.querySelectorAll('a')].some(a => a.getAttribute('href')?.startsWith('javascript:')), 'Unsafe Markdown link survived');
         check(notes.value === sample, 'Preview changed the source');
-        check(notes.getBoundingClientRect().height >= 850, 'Notes editor became smaller');
+        check(notes.hidden && !preview.hidden && preview.getBoundingClientRect().height >= 850, 'The single Notes surface became smaller or still shows split panels');
         await pause(800);
         await saveQueue;
         check((await disk()).notes === sample, 'Autosave did not preserve exact math source and whitespace');

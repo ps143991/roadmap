@@ -3,7 +3,7 @@
 import shutil
 from pathlib import Path
 
-APPLICATION_FILES = ('VERSION', 'LICENSE', 'THIRD_PARTY_NOTICES.md', 'roadmap_storage.py', 'roadmap_server.py', 'roadmap_app.py', 'roadmap_features.js', 'roadmap_these.html', 'gantt.html', 'roadmap.svg', 'roadmap.png', 'start_roadmap.sh')
+APPLICATION_FILES = ('VERSION', 'LICENSE', 'THIRD_PARTY_NOTICES.md', 'roadmap_storage.py', 'roadmap_server.py', 'roadmap_app.py', 'roadmap_features.js', 'notes_editor.js', 'roadmap_these.html', 'gantt.html', 'roadmap.svg', 'roadmap.png', 'start_roadmap.sh')
 APPLICATION_DIRECTORIES = ('examples', 'vendor')
 DISTRIBUTION_FILES = ('README.md', 'install.sh', 'install_app.py', 'uninstall.sh', 'roadmap_packaging.py', 'build_release.py')
 

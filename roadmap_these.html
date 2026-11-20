@@ -567,35 +567,61 @@
         }
 
         .notes-editors {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 16px;
-        }
-
-        .notes-editors.preview-hidden {
-            grid-template-columns: minmax(0, 1fr);
-        }
-
-        .notes-column {
-            min-width: 0;
-        }
-
-        .notes-column-title {
             display: block;
-            margin-bottom: 8px;
-            color: var(--muted);
-            font-size: 0.86rem;
-            font-weight: 650;
         }
 
         .notes-preview {
-            height: 850px;
+            min-height: 850px;
+            max-height: 80vh;
             padding: 16px;
             overflow: auto;
             overflow-wrap: anywhere;
             border: 1px solid var(--border);
             border-radius: 6px;
-            background: var(--surface-soft);
+            background: #ffffff;
+        }
+
+        #field-notes[hidden],
+        .notes-preview[hidden] {
+            display: none;
+        }
+
+        .notes-rendered-block {
+            cursor: text;
+            min-height: 1.5em;
+            border-radius: 4px;
+        }
+
+        .notes-rendered-block:focus-visible {
+            outline: 2px solid var(--blue);
+            outline-offset: 3px;
+        }
+
+        .notes-empty {
+            color: var(--muted);
+        }
+
+        .notes-active {
+            margin-bottom: 0.9em;
+        }
+
+        .notes-active-source {
+            display: block;
+            width: 100%;
+            min-height: 48px;
+            padding: 0;
+            border: 0;
+            outline: none;
+            resize: none;
+            overflow: hidden;
+            background: #ffffff;
+            color: var(--text);
+            opacity: 1;
+            font: inherit;
+            font-weight: 400;
+            font-style: normal;
+            line-height: 1.5;
+            transition: none;
         }
 
         .notes-preview p,
@@ -645,6 +671,10 @@
             display: block;
             width: 100%;
             min-height: 850px;
+            font-weight: 400;
+            font-style: normal;
+            opacity: 1;
+            transition: none;
             padding: 12px;
             border: 1px solid var(--border);
             border-radius: 6px;
@@ -827,10 +857,6 @@
         }
 
         @media (max-width: 1180px) {
-            .notes-editors {
-                grid-template-columns: minmax(0, 1fr);
-            }
-
             .stats {
                 grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
             }
@@ -972,16 +998,11 @@
                             <span class="notes-hint">Inline math: <code>$...$</code> · display math: <code>$$...$$</code></span>
                         </div>
                         <div class="notes-editors" id="notes-editors">
-                            <div class="notes-column">
-                                <label class="notes-column-title" for="field-notes">Write</label>
-                                <textarea id="field-notes" form="editor-form" placeholder="Add notes, Markdown, or LaTeX equations…" disabled></textarea>
-                            </div>
-                            <div class="notes-column" id="notes-preview-column">
-                                <h3 class="notes-column-title" id="notes-preview-title">Preview</h3>
-                                <div class="notes-preview" id="notes-preview" role="region" aria-labelledby="notes-preview-title" tabindex="0"></div>
-                            </div>
+                            <label class="visually-hidden" for="field-notes">Notes source</label>
+                            <textarea id="field-notes" form="editor-form" placeholder="Add notes, Markdown, or LaTeX equations…" disabled></textarea>
+                            <div class="notes-preview" id="notes-preview" role="group" aria-label="Notes. Click a paragraph to edit it." tabindex="0"></div>
                         </div>
-                        <p class="notes-hint">Changes save automatically.</p>
+                        <p class="notes-hint">Click a paragraph to edit it. Finished paragraphs render in place. Changes save automatically.</p>
                     </div>
                 </details>
             </section>
@@ -1702,6 +1723,7 @@
         }
 
         function commitEditor() {
+            syncActiveNotes();
             window.clearTimeout(autosaveTimer);
             if (!editorDirty) {
                 return;
@@ -2176,5 +2198,6 @@
         });
     </script>
     <script src="roadmap_features.js"></script>
+    <script src="notes_editor.js"></script>
 </body>
 </html>

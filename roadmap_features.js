@@ -6,7 +6,6 @@ const redoStack = [];
 let branchDrag = null;
 let suppressedBranchClick = null;
 let notesMarkdown = null;
-let notesPreviewTimer = null;
 
 function captureUndoState(label) {
     return { label, data: JSON.stringify(thesisData), selected: selectedNodeId, collapsed: [...collapsedIds], notesOpen: document.getElementById('notes-panel').open };
@@ -44,6 +43,8 @@ function restoreChange(source, destination, action) {
     const focused = document.activeElement;
     const focusId = focused?.id;
     const selectedBefore = selectedNodeId;
+    const notesSelection = getNotesSelection();
+    const notesBlockStart = notesEditor.active?.start;
     const selection = typeof focused?.selectionStart === 'number' ? [focused.selectionStart, focused.selectionEnd] : null;
     destination.push(captureUndoState(previous.label));
     thesisData = JSON.parse(previous.data);
@@ -53,7 +54,10 @@ function restoreChange(source, destination, action) {
     document.getElementById('notes-panel').open = previous.notesOpen;
     renderAll(true);
     if (focusId && selectedBefore === selectedNodeId) {
-        const input = document.getElementById(focusId);
+        if (focusId === 'notes-active-block' && notesSelection) {
+            focusNotesAtOffset(...notesSelection, notesBlockStart);
+        }
+        const input = focusId === 'notes-active-block' ? null : document.getElementById(focusId);
         input?.focus({ preventScroll: true });
         if (selection && input?.setSelectionRange) {
             input.setSelectionRange(Math.min(selection[0], input.value.length), Math.min(selection[1], input.value.length));
@@ -252,48 +256,9 @@ function createNotesMarkdown() {
     });
 }
 
-function updateNotesPreview() {
-    window.clearTimeout(notesPreviewTimer);
-    if (!notesMarkdown || !document.getElementById('notes-preview-toggle').checked) {
-        return;
-    }
-    const preview = document.getElementById('notes-preview');
-    const source = document.getElementById('field-notes').value;
-    const position = preview.scrollTop;
-    if (!source.trim()) {
-        preview.innerHTML = '<p class="notes-hint">Your notes and equations appear here as you type.</p>';
-        return;
-    }
-    preview.innerHTML = DOMPurify.sanitize(notesMarkdown.parse(source), { USE_PROFILES: { html: true, svg: true, mathMl: true }, FORBID_TAGS: ['img', 'form', 'input', 'button', 'textarea', 'video', 'audio', 'source', 'style'] });
-    preview.scrollTop = position;
-}
-
 function bindRoadmapFeatures() {
     notesMarkdown = createNotesMarkdown();
-    const toggle = document.getElementById('notes-preview-toggle');
-    const preferenceKey = `${STORAGE_KEY}:notes-preview`;
-    try {
-        toggle.checked = localStorage.getItem(preferenceKey) !== 'false';
-    } catch (error) {
-        // Preview also works when browser storage is disabled.
-    }
-    const setPreviewVisibility = () => {
-        document.getElementById('notes-editors').classList.toggle('preview-hidden', !toggle.checked);
-        document.getElementById('notes-preview-column').hidden = !toggle.checked;
-        updateNotesPreview();
-    };
-    toggle.addEventListener('change', () => {
-        setPreviewVisibility();
-        try {
-            localStorage.setItem(preferenceKey, String(toggle.checked));
-        } catch (error) {
-            // Preview controls do not depend on saving preferences.
-        }
-    });
-    document.getElementById('field-notes').addEventListener('input', () => {
-        window.clearTimeout(notesPreviewTimer);
-        notesPreviewTimer = window.setTimeout(updateNotesPreview, 100);
-    });
+    bindNotesEditor();
     document.getElementById('undo-change').addEventListener('click', undoChange);
     document.getElementById('redo-change').addEventListener('click', redoChange);
     document.addEventListener('keydown', event => {
@@ -316,6 +281,5 @@ function bindRoadmapFeatures() {
             }
         }
     }, true);
-    setPreviewVisibility();
     updateUndoButtons();
 }

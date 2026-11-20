@@ -23,10 +23,11 @@ Expand a chapter to see its tasks, and hide the sidebar to give the map more roo
 <details>
 <summary>Notes with live Markdown and LaTeX preview</summary>
 
-Write notes and equations alongside their rendered preview. The example equation
-and Broad Features guide are included in the starter Notes.
+Write and read notes in one panel. Click a paragraph or equation to edit its
+source; finished blocks render in place. The example equation and Broad Features
+guide are included in the starter Notes.
 
-![Notes editor beside the live Markdown and LaTeX preview, showing an equation and the Broad Features guide](docs/notes-latex.png)
+![Single-panel Notes with a rendered equation and the Broad Features guide](docs/notes-latex.png)
 
 </details>
 
@@ -109,7 +110,13 @@ keep exported copies if you want longer-term versions.
 
 ## Example equation
 
-Notes can show equations as you type. The starter Notes include this example:
+Notes render Markdown and equations in the same panel where you edit them. Click
+a paragraph or equation to edit its source. Move to another block, click outside,
+or enter a blank line to render the finished block. Headings and complete display
+equations render when you press Enter. Turn **Live preview** off to edit the whole
+note as plain source; the preference is remembered.
+
+The starter Notes include this example:
 
 ```text
 Inline math: $y = mx + b$.
@@ -126,7 +133,7 @@ $$\bar{x} = \frac{1}{n} \sum_{i=1}^{n} x_i$$
 - Your work saves automatically, including your last edits before you close the app.
 - A backup keeps the previous saved version of your roadmap.
 - Undo and redo changes with Ctrl+Z and Ctrl+Y, or use the toolbar buttons.
-- Write notes with headings, lists, and equations, and see the formatted result while you type.
+- Write notes with headings, lists, and equations in one panel. Finished paragraphs render in place; click them to edit again.
 - Drag the sidebar divider to resize it, or use the little arrow to hide it and bring it back.
 - Add start dates and deadlines, then use the Gantt view to see your plan over time.
 - Export a copy of your roadmap, or import a saved copy to continue working on it.
@@ -199,6 +206,7 @@ separate startup check can run under Xvfb for CI:
 
 ```bash
 xvfb-run -a python3 tests/check_desktop_startup.py
+xvfb-run -a python3 tests/check_notes_editor.py
 ```
 
 Build the shareable installer archive:
