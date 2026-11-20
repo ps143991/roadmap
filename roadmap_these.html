@@ -6,6 +6,7 @@
     <title>Thesis Roadmap</title>
     <link rel="icon" href="roadmap.svg" type="image/svg+xml">
     <script src="vendor/d3.v7.min.js"></script>
+    <script src="vendor/codemirror/codemirror.min.js"></script>
     <link rel="stylesheet" href="vendor/katex/katex.min.css">
     <script defer src="vendor/katex/katex.min.js"></script>
     <script defer src="vendor/marked/marked.umd.js"></script>
@@ -572,122 +573,75 @@
 
         .notes-preview {
             min-height: 850px;
-            max-height: 80vh;
-            padding: 16px;
-            overflow: auto;
-            overflow-wrap: anywhere;
+            overflow: hidden;
             border: 1px solid var(--border);
             border-radius: 6px;
             background: #ffffff;
+            color: var(--text);
+            font-weight: 400;
+            opacity: 1;
         }
 
-        #field-notes[hidden],
-        .notes-preview[hidden] {
+        #field-notes[hidden] {
             display: none;
         }
 
-        .notes-rendered-block {
-            cursor: text;
-            min-height: 1.5em;
-            border-radius: 4px;
-        }
-
-        .notes-rendered-block:focus-visible {
-            outline: 2px solid var(--blue);
-            outline-offset: 3px;
-        }
-
-        .notes-empty {
-            color: var(--muted);
-        }
-
-        .notes-active {
-            margin-bottom: 0.9em;
-        }
-
-        .notes-active-source {
-            display: block;
-            width: 100%;
-            min-height: 48px;
-            padding: 0;
-            border: 0;
-            outline: none;
-            resize: none;
-            overflow: hidden;
-            background: #ffffff;
-            color: var(--text);
-            opacity: 1;
-            font: inherit;
-            font-weight: 400;
-            font-style: normal;
-            line-height: 1.5;
-            transition: none;
-        }
-
-        .notes-preview p,
-        .notes-preview ul,
-        .notes-preview ol,
-        .notes-preview pre,
-        .notes-preview blockquote,
-        .notes-preview h1,
-        .notes-preview h2,
-        .notes-preview h3 {
-            margin-bottom: 0.9em;
-        }
-
-        .notes-preview ul,
-        .notes-preview ol {
-            padding-left: 1.6em;
-        }
-
-        .notes-preview pre,
-        .notes-preview blockquote {
-            padding: 12px;
-            background: #e6edf5;
-            border-radius: 6px;
-        }
-
-        .notes-preview pre {
-            white-space: pre-wrap;
-        }
-
-        .notes-preview .katex-display {
-            overflow-x: auto;
-            overflow-y: hidden;
-            padding: 4px 0;
-        }
-
-        .notes-preview table {
-            border-collapse: collapse;
-        }
-
-        .notes-preview th,
-        .notes-preview td {
-            border: 1px solid var(--border);
-            padding: 6px 10px;
-        }
-
-        #field-notes {
-            display: block;
-            width: 100%;
+        .notes-preview .cm-editor {
             min-height: 850px;
+            font: inherit;
+            color: var(--text);
+            font-weight: 400;
+            opacity: 1;
+        }
+
+        .notes-preview .cm-focused {
+            outline: none;
+        }
+
+        .notes-preview .cm-scroller {
+            min-height: 850px;
+            max-height: 80vh;
+            overflow: auto;
+            font-family: inherit;
+            line-height: 1.5;
+        }
+
+        .notes-preview .cm-content {
+            min-height: 850px;
+            padding: 16px 10px;
+            caret-color: var(--text);
+        }
+
+        .notes-preview .cm-line {
+            color: var(--text);
+            font-family: inherit;
+            font-size: inherit;
             font-weight: 400;
             font-style: normal;
             opacity: 1;
-            transition: none;
-            padding: 12px;
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            background: #ffffff;
-            color: var(--text);
-            resize: vertical;
         }
 
-        #field-notes:focus {
-            outline: none;
-            border-color: var(--blue);
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+        .notes-preview .cm-line.notes-heading {
+            font-weight: 700;
+            line-height: 1.35;
         }
+
+        .notes-preview .notes-heading-1 { font-size: 2em; }
+        .notes-preview .notes-heading-2 { font-size: 1.5em; }
+        .notes-preview .notes-heading-3 { font-size: 1.25em; }
+        .notes-preview .notes-heading-4 { font-size: 1.1em; }
+        .notes-preview .notes-strong { font-weight: 700; }
+        .notes-preview .notes-emphasis { font-style: italic; }
+        .notes-preview .notes-strikethrough { text-decoration: line-through; }
+        .notes-preview .notes-link { color: var(--blue); text-decoration: underline; }
+        .notes-preview .notes-source-token { color: inherit; opacity: 1; }
+        .notes-preview .notes-inline-code { font-family: monospace; background: #eef3f8; }
+        .notes-preview .notes-code-line { font-family: monospace; background: #eef3f8; }
+        .notes-preview .notes-quote-line { border-left: 3px solid var(--border); padding-left: 12px; }
+        .notes-preview .notes-list-line { padding-left: calc(6px + var(--notes-indent, 0em)); }
+        .notes-preview .notes-list-marker { display: inline-block; min-width: 0.8em; font-weight: 400; }
+        .notes-preview .notes-math-widget { cursor: text; }
+        .notes-preview .notes-math-widget .katex-display { overflow-x: auto; overflow-y: hidden; padding: 4px 0; }
 
         .notes-hint {
             margin-top: 8px;
@@ -1000,9 +954,9 @@
                         <div class="notes-editors" id="notes-editors">
                             <label class="visually-hidden" for="field-notes">Notes source</label>
                             <textarea id="field-notes" form="editor-form" placeholder="Add notes, Markdown, or LaTeX equations…" disabled></textarea>
-                            <div class="notes-preview" id="notes-preview" role="group" aria-label="Notes. Click a paragraph to edit it." tabindex="0"></div>
+                            <div class="notes-preview" id="notes-preview" role="group" aria-label="Notes editor"></div>
                         </div>
-                        <p class="notes-hint">Click a paragraph to edit it. Finished paragraphs render in place. Changes save automatically.</p>
+                        <p class="notes-hint">Edit anywhere. Only the formatting or equation at the cursor shows its source. Changes save automatically.</p>
                     </div>
                 </details>
             </section>

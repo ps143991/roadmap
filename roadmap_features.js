@@ -44,7 +44,7 @@ function restoreChange(source, destination, action) {
     const focusId = focused?.id;
     const selectedBefore = selectedNodeId;
     const notesSelection = getNotesSelection();
-    const notesBlockStart = notesEditor.active?.start;
+    const notesFocused = Boolean(notesEditor.view?.hasFocus);
     const selection = typeof focused?.selectionStart === 'number' ? [focused.selectionStart, focused.selectionEnd] : null;
     destination.push(captureUndoState(previous.label));
     thesisData = JSON.parse(previous.data);
@@ -53,11 +53,9 @@ function restoreChange(source, destination, action) {
     editorDirty = false;
     document.getElementById('notes-panel').open = previous.notesOpen;
     renderAll(true);
-    if (focusId && selectedBefore === selectedNodeId) {
-        if (focusId === 'notes-active-block' && notesSelection) {
-            focusNotesAtOffset(...notesSelection, notesBlockStart);
-        }
-        const input = focusId === 'notes-active-block' ? null : document.getElementById(focusId);
+    if ((focusId || notesFocused) && selectedBefore === selectedNodeId) {
+        if (notesFocused && notesSelection) focusNotesAtOffset(...notesSelection);
+        const input = notesFocused ? null : document.getElementById(focusId);
         input?.focus({ preventScroll: true });
         if (selection && input?.setSelectionRange) {
             input.setSelectionRange(Math.min(selection[0], input.value.length), Math.min(selection[1], input.value.length));

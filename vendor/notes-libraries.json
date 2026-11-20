@@ -13,5 +13,13 @@
     "version": "3.4.17",
     "source": "https://registry.npmjs.org/dompurify/-/dompurify-3.4.17.tgz",
     "integrity": "sha512-B/pSlYVHQ58kqISD/yDjuJ1yfzI34m1gF4lAod2bwSRhiN4K5Cl3H8Af7hqB2PmTL911tdEudnnXn5FnhRoz0w=="
+  },
+  "codemirror": {
+    "version": "6",
+    "source": "https://codemirror.net/",
+    "bundle": "vendor/codemirror/codemirror.min.js",
+    "dependencies": "vendor/codemirror/dependencies.lock.json",
+    "sha256": "bc2987bbf3465b72b56514aa136f35ae4654f907f169a98e6950ea9c3d7f278f",
+    "build": "python3 tools/build_notes_editor.py"
   }
 }

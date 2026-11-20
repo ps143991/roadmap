@@ -1,271 +1,288 @@
 'use strict';
 
-const notesEditor = { source: null, nodeId: null, active: null, composing: false, rendering: false };
+const notesEditor = { view: null, nodeId: null, syncing: false, focused: false };
+const notesCM = RoadmapNotesCM;
+const refreshNotes = notesCM.StateEffect.define();
+const notesAccess = new notesCM.Compartment();
 
 function notesPreviewEnabled() {
     return document.getElementById('notes-preview-toggle').checked;
 }
 
-function renderNotesHTML(source, token = null, links = null) {
-    const tokens = token ? [token] : null;
-    if (tokens) {
-        tokens.links = links;
-    }
-    return DOMPurify.sanitize(tokens ? notesMarkdown.parser(tokens) : notesMarkdown.parse(source), { USE_PROFILES: { html: true, svg: true, mathMl: true }, FORBID_TAGS: ['img', 'form', 'input', 'button', 'textarea', 'video', 'audio', 'source', 'style'] });
+function notesMarkdownExtensions() {
+    const displayStart = line => {
+        const text = line.text.slice(line.pos);
+        if (!text.startsWith('$$') && !text.startsWith('\\[')) return false;
+        const token = mathToken(text, true);
+        return !token || !text.slice(token.raw.length).trim();
+    };
+    return {
+        defineNodes: ['NotesMath', { name: 'NotesMathBlock', block: true }],
+        parseInline: [{
+            name: 'NotesMath',
+            before: 'Escape',
+            parse(context, next, position) {
+                if (next !== 36 && next !== 92) return -1;
+                const token = mathToken(context.slice(position, context.end), false);
+                return token ? context.addElement(context.elt('NotesMath', position, position + token.raw.length)) : -1;
+            }
+        }],
+        parseBlock: [{
+            name: 'NotesMathBlock',
+            before: 'FencedCode',
+            endLeaf(context, line) { return displayStart(line); },
+            parse(context, line) {
+                if (!displayStart(line)) return false;
+                const from = context.lineStart + line.pos;
+                const depth = context.depth;
+                let text = line.text.slice(line.pos);
+                let to = context.lineStart + line.text.length;
+                let advance = true;
+                while (!mathToken(text, true)) {
+                    if (!context.nextLine() || line.depth < depth) {
+                        advance = false;
+                        break;
+                    }
+                    text += '\n' + line.text;
+                    to = context.lineStart + line.text.length;
+                }
+                context.addElement(context.elt('NotesMathBlock', from, to));
+                if (advance) context.nextLine();
+                return true;
+            }
+        }]
+    };
 }
 
-function notesBlocks(source) {
-    const blocks = [];
-    let offset = 0;
-    const tokens = notesMarkdown.lexer(source);
-    for (const token of tokens) {
-        const raw = token.raw || '';
-        if (!source.startsWith(raw, offset)) {
-            return [{ start: 0, end: source.length }];
-        }
-        if (token.type !== 'space' && raw.length) {
-            blocks.push({ start: offset, end: offset + raw.length, token, links: tokens.links });
-        }
-        offset += raw.length;
-    }
-    if (offset !== source.length) {
-        return [{ start: 0, end: source.length }];
-    }
-    return blocks;
+function notesSelectionTouches(state, from, to) {
+    return notesEditor.focused && state.selection.ranges.some(range => range.empty ? range.head >= from && range.head <= to : range.from < to && range.to > from);
 }
+
+function notesEscaped(source, offset) {
+    let backslashes = 0;
+    while (offset > 0 && source[--offset] === '\\') backslashes++;
+    return backslashes % 2 === 1;
+}
+
+function notesMathRanges(source, excluded) {
+    const ranges = [];
+    const starts = /\$|\\[([]/g;
+    let match;
+    while ((match = starts.exec(source))) {
+        const from = match.index;
+        const blocked = excluded.find(range => from >= range.from && from < range.to);
+        if (blocked) {
+            starts.lastIndex = blocked.to;
+            continue;
+        }
+        if (notesEscaped(source, from)) continue;
+        const token = mathToken(source.slice(from), false);
+        if (!token || excluded.some(range => range.from < from + token.raw.length && range.to > from)) continue;
+        const delimiter = token.raw.startsWith('$$') || token.raw.startsWith('\\') ? 2 : 1;
+        ranges.push({ from, to: from + token.raw.length, text: token.text, display: token.display, delimiter });
+        starts.lastIndex = from + token.raw.length;
+    }
+    return ranges;
+}
+
+class NotesMathWidget extends notesCM.WidgetType {
+    constructor(math, block) {
+        super();
+        this.math = math;
+        this.block = block;
+    }
+    eq(other) {
+        return this.math.text === other.math.text && this.math.from === other.math.from && this.math.to === other.math.to && this.block === other.block && this.math.display === other.math.display;
+    }
+    updateDOM(element) {
+        if (element.tagName !== (this.block ? 'DIV' : 'SPAN') || element.dataset.tex !== this.math.text || element.dataset.display !== String(this.math.display)) return false;
+        this.setOffsets(element);
+        return true;
+    }
+    setOffsets(element) {
+        element.dataset.from = this.math.from;
+        element.dataset.to = this.math.to;
+        element.dataset.delimiter = this.math.delimiter;
+    }
+    toDOM() {
+        const element = document.createElement(this.block ? 'div' : 'span');
+        element.className = 'notes-math-widget';
+        element.dataset.tex = this.math.text;
+        element.dataset.display = this.math.display;
+        this.setOffsets(element);
+        element.innerHTML = katex.renderToString(this.math.text, { displayMode: this.math.display, throwOnError: false, trust: false, strict: 'ignore', maxExpand: 1000 });
+        element.setAttribute('aria-label', `Edit equation: ${this.math.text}`);
+        element.addEventListener('pointerdown', event => {
+            event.preventDefault();
+            focusNotesAtOffset(Number(element.dataset.from) + Number(element.dataset.delimiter));
+        });
+        return element;
+    }
+    ignoreEvent() { return true; }
+}
+
+class NotesListWidget extends notesCM.WidgetType {
+    constructor(label) {
+        super();
+        this.label = label;
+    }
+    eq(other) { return this.label === other.label; }
+    toDOM() {
+        const element = document.createElement('span');
+        element.className = 'notes-list-marker';
+        element.textContent = this.label;
+        return element;
+    }
+    ignoreEvent() { return false; }
+}
+
+function notesDecorations(state) {
+    if (!notesPreviewEnabled()) return notesCM.Decoration.none;
+    const source = state.doc.toString();
+    const tree = notesCM.ensureSyntaxTree(state, state.doc.length, 50) || notesCM.syntaxTree(state);
+    const nodes = [];
+    const excluded = [];
+    tree.iterate({ enter(node) {
+        const entry = { name: node.name, from: node.from, to: node.to, parent: node.node.parent };
+        nodes.push(entry);
+        if (['InlineCode', 'FencedCode', 'CodeBlock'].includes(node.name)) excluded.push(entry);
+    } });
+    const maths = notesMathRanges(source, excluded);
+    const decorations = [];
+    const hidden = [];
+    const inMath = node => maths.some(math => node.from >= math.from && node.to <= math.to);
+    const hide = (from, to, widget = null, block = false) => {
+        if (to <= from || hidden.some(range => from < range.to && to > range.from)) return;
+        hidden.push({ from, to });
+        decorations.push(notesCM.Decoration.replace({ widget, block }).range(from, to));
+    };
+    const mark = (from, to, className) => {
+        if (to > from) decorations.push(notesCM.Decoration.mark({ class: className }).range(from, to));
+    };
+    for (const math of maths) {
+        if (notesSelectionTouches(state, math.from, math.to)) {
+            mark(math.from, math.to, 'notes-source-token');
+        } else {
+            const first = state.doc.lineAt(math.from);
+            const last = state.doc.lineAt(math.to);
+            const block = math.display && !source.slice(first.from, math.from).trim() && !source.slice(math.to, last.to).trim();
+            hide(math.from, math.to, new NotesMathWidget(math, block), block);
+        }
+    }
+    const lineClasses = new Map();
+    const addLine = (from, className, style = '') => {
+        const line = state.doc.lineAt(from);
+        const current = lineClasses.get(line.from) || { classes: [], style: '' };
+        current.classes.push(className);
+        current.style += style;
+        lineClasses.set(line.from, current);
+    };
+    for (const node of nodes) {
+        if (inMath(node) && !['Document', 'Paragraph', 'ListItem', 'BulletList', 'OrderedList', 'Blockquote'].includes(node.name)) continue;
+        const parent = node.parent;
+        if (/^(ATX|Setext)Heading[1-6]$/.test(node.name)) {
+            addLine(node.from, `notes-heading notes-heading-${node.name.at(-1)}`);
+        } else if (node.name === 'StrongEmphasis') {
+            mark(node.from, node.to, 'notes-strong');
+        } else if (node.name === 'Emphasis') {
+            mark(node.from, node.to, 'notes-emphasis');
+        } else if (node.name === 'Strikethrough') {
+            mark(node.from, node.to, 'notes-strikethrough');
+        } else if (node.name === 'InlineCode') {
+            mark(node.from, node.to, 'notes-inline-code');
+        } else if (node.name === 'Link' || node.name === 'Autolink') {
+            mark(node.from, node.to, 'notes-link');
+            if (node.name === 'Link' && !notesSelectionTouches(state, node.from, node.to)) {
+                const target = nodes.find(child => child.name === 'LinkMark' && child.parent?.from === node.from && child.parent?.to === node.to && source.slice(child.from, child.to) === '(');
+                if (target) hide(target.from, node.to);
+            }
+        } else if (node.name === 'LinkReference' && !notesSelectionTouches(state, node.from, node.to)) {
+            hide(node.from, node.to);
+        } else if (node.name === 'FencedCode' || node.name === 'CodeBlock') {
+            for (let number = state.doc.lineAt(node.from).number; number <= state.doc.lineAt(node.to).number; number++) addLine(state.doc.line(number).from, 'notes-code-line');
+        } else if (node.name === 'QuoteMark') {
+            addLine(node.from, 'notes-quote-line');
+        }
+        if (['EmphasisMark', 'StrikethroughMark', 'CodeMark', 'LinkMark', 'URL', 'LinkTitle', 'LinkLabel', 'HeaderMark'].includes(node.name) && parent) {
+            if (node.name === 'CodeMark' && parent.name !== 'InlineCode') continue;
+            if (node.name === 'URL' && parent.name === 'Autolink') continue;
+            if (node.name === 'LinkLabel' && parent.name !== 'Link') continue;
+            const active = notesSelectionTouches(state, parent.from, parent.to);
+            if (!active) {
+                let end = node.to;
+                if (node.name === 'HeaderMark' && source[end] === ' ') end++;
+                hide(node.from, end);
+            } else {
+                mark(node.from, node.to, 'notes-source-token');
+            }
+        }
+        if (node.name === 'ListMark') {
+            const line = state.doc.lineAt(node.from);
+            const prefix = source.slice(line.from, node.from);
+            const indent = prefix.replace(/\t/g, '    ').length;
+            addLine(node.from, 'notes-list-line', `--notes-indent:${Math.floor(indent / 2) * 1.4}em;`);
+            if (!notesSelectionTouches(state, line.from, node.to)) {
+                if (!prefix.trim()) hide(line.from, node.from);
+                const raw = source.slice(node.from, node.to);
+                hide(node.from, node.to, new NotesListWidget(/^\d/.test(raw) ? raw : '•'));
+            }
+        }
+    }
+    for (const [from, line] of lineClasses) decorations.push(notesCM.Decoration.line({ attributes: { class: line.classes.join(' '), style: line.style } }).range(from));
+    return notesCM.Decoration.set(decorations, true);
+}
+
+const notesDecorationField = notesCM.StateField.define({
+    create: notesDecorations,
+    update(value, transaction) {
+        return transaction.docChanged || transaction.selection || transaction.effects.some(effect => effect.is(refreshNotes)) || notesCM.syntaxTree(transaction.startState) !== notesCM.syntaxTree(transaction.state) ? notesDecorations(transaction.state) : value;
+    },
+    provide: field => notesCM.EditorView.decorations.from(field)
+});
 
 function getNotesSelection() {
-    const active = notesEditor.active;
-    if (active && document.activeElement === active.area) {
-        return [active.start + active.area.selectionStart, active.start + active.area.selectionEnd];
-    }
-    const source = document.getElementById('field-notes');
-    return document.activeElement === source ? [source.selectionStart, source.selectionEnd] : null;
-}
-
-function resizeActiveNotes() {
-    const area = notesEditor.active?.area;
-    if (!area) {
-        return;
-    }
-    const surface = document.getElementById('notes-preview');
-    const scroll = surface.scrollTop;
-    area.style.height = '0px';
-    area.style.height = `${Math.max(48, area.scrollHeight + 2)}px`;
-    surface.scrollTop = scroll;
+    const view = notesEditor.view;
+    return view?.hasFocus ? [view.state.selection.main.from, view.state.selection.main.to] : null;
 }
 
 function syncActiveNotes() {
-    const active = notesEditor.active;
-    if (!active || notesEditor.rendering || notesEditor.nodeId !== selectedNodeId) {
-        return;
-    }
+    const view = notesEditor.view;
+    if (!view || notesEditor.syncing || notesEditor.nodeId !== selectedNodeId) return;
     const source = document.getElementById('field-notes');
-    const value = active.prefix + active.area.value + active.suffix;
+    const value = view.state.doc.toString();
     if (source.value !== value) {
         source.value = value;
-        notesEditor.source = value;
-        active.end = active.start + active.area.value.length;
-        active.area.dataset.end = active.end;
         source.dispatchEvent(new Event('input', { bubbles: true }));
     }
 }
 
-function renderNotesBlocks() {
-    const surface = document.getElementById('notes-preview');
-    const source = document.getElementById('field-notes');
-    const scroll = surface.scrollTop;
-    notesEditor.rendering = true;
-    notesEditor.active = null;
-    notesEditor.source = source.value;
-    notesEditor.nodeId = selectedNodeId;
-    const fragment = document.createDocumentFragment();
-    const blocks = notesBlocks(source.value);
-    if (!blocks.length) {
-        blocks.push({ start: 0, end: source.value.length });
-    }
-    for (const block of blocks) {
-        const element = document.createElement('div');
-        element.className = 'notes-rendered-block';
-        element.dataset.start = block.start;
-        element.dataset.end = block.end;
-        element.tabIndex = source.disabled ? -1 : 0;
-        element.setAttribute('role', 'button');
-        element.setAttribute('aria-label', 'Edit this part of the notes');
-        const raw = source.value.slice(block.start, block.end);
-        if (raw.trim()) {
-            element.innerHTML = renderNotesHTML(raw, block.token, block.links);
-        } else {
-            element.textContent = 'Click to write notes, Markdown, or equations…';
-            element.classList.add('notes-empty');
-        }
-        fragment.append(element);
-    }
-    surface.replaceChildren(fragment);
-    surface.setAttribute('aria-disabled', String(source.disabled));
-    surface.scrollTop = scroll;
-    notesEditor.rendering = false;
-}
-
-function finishActiveNotes() {
-    if (!notesEditor.active) {
-        return;
-    }
-    syncActiveNotes();
-    notesEditor.composing = false;
-    renderNotesBlocks();
-}
-
-function focusNotesAtOffset(start, end = start, preferredStart = null, wholeDocument = false) {
-    const source = document.getElementById('field-notes');
-    if (source.disabled) {
-        return;
-    }
-    start = Math.max(0, Math.min(source.value.length, start));
-    end = Math.max(start, Math.min(source.value.length, end));
-    if (!notesPreviewEnabled()) {
-        source.focus({ preventScroll: true });
-        source.setSelectionRange(start, end);
-        return;
-    }
-    if (notesEditor.active) {
-        finishActiveNotes();
-    }
-    const blocks = notesBlocks(source.value);
-    let block = preferredStart === null ? null : blocks.find(item => item.start === preferredStart);
-    block = block || blocks.find(item => start >= item.start && start < item.end);
-    if (!block) {
-        block = blocks.find(item => item.end === start);
-    }
-    if (!block && start === source.value.length && blocks.at(-1)?.end === start && !source.value.endsWith('\n\n')) {
-        block = blocks.at(-1);
-    }
-    if (!block) {
-        const next = blocks.find(item => item.start >= start);
-        block = { start, end: next?.start ?? source.value.length };
-    }
-    const surface = document.getElementById('notes-preview');
-    if (wholeDocument) {
-        block = { start: 0, end: source.value.length };
-        surface.replaceChildren();
-    }
-    let element = [...surface.children].find(item => Number(item.dataset.start) === block.start && Number(item.dataset.end) === block.end);
-    if (!element) {
-        element = document.createElement('div');
-        const next = [...surface.children].find(item => Number(item.dataset.start) >= block.end);
-        surface.insertBefore(element, next || null);
-    }
-    element.className = 'notes-active';
-    element.removeAttribute('role');
-    element.removeAttribute('tabindex');
-    const area = document.createElement('textarea');
-    area.id = 'notes-active-block';
-    area.className = 'notes-active-source';
-    area.setAttribute('aria-label', 'Edit notes');
-    area.dataset.start = block.start;
-    area.dataset.end = block.end;
-    area.spellcheck = true;
-    area.value = source.value.slice(block.start, block.end);
-    element.replaceChildren(area);
-    notesEditor.active = { area, start: block.start, end: block.end, originalEnd: block.end, prefix: source.value.slice(0, block.start), suffix: source.value.slice(block.end) };
-    area.addEventListener('input', () => {
-        syncActiveNotes();
-        resizeActiveNotes();
-    });
-    area.addEventListener('compositionstart', () => { notesEditor.composing = true; });
-    area.addEventListener('compositionend', () => {
-        notesEditor.composing = false;
-        syncActiveNotes();
-        resizeActiveNotes();
-    });
-    area.addEventListener('blur', () => {
-        if (!notesEditor.rendering && notesEditor.active?.area === area) {
-            finishActiveNotes();
-        }
-    });
-    area.addEventListener('keydown', activeNotesKeydown);
-    area.focus({ preventScroll: true });
-    area.setSelectionRange(Math.min(area.value.length, start - block.start), Math.min(area.value.length, end - block.start));
-    resizeActiveNotes();
-}
-
-function activeNotesKeydown(event) {
-    const active = notesEditor.active;
-    if (!active || event.isComposing || notesEditor.composing) {
-        return;
-    }
-    const area = active.area;
-    const cursor = area.selectionStart;
-    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'a') {
-        event.preventDefault();
-        focusNotesAtOffset(0, document.getElementById('field-notes').value.length, null, true);
-        return;
-    }
-    if (['ArrowUp', 'ArrowDown'].includes(event.key) && !event.shiftKey && !event.ctrlKey && !event.metaKey && !event.altKey && area.selectionStart === area.selectionEnd) {
-        const blocks = notesBlocks(document.getElementById('field-notes').value);
-        const previous = blocks.filter(block => block.end <= active.start).at(-1);
-        const next = blocks.find(block => block.start >= active.end);
-        const atEnd = cursor >= area.value.replace(/\n+$/, '').length;
-        if (event.key === 'ArrowUp' && cursor === 0 && previous) {
-            event.preventDefault();
-            finishActiveNotes();
-            focusNotesAtOffset(previous.end, previous.end, previous.start);
-            return;
-        }
-        if (event.key === 'ArrowDown' && atEnd && next) {
-            event.preventDefault();
-            finishActiveNotes();
-            focusNotesAtOffset(next.start, next.start, next.start);
-            return;
-        }
-    }
-    if ((event.ctrlKey || event.metaKey) && !event.shiftKey && !event.altKey && ['Home', 'End'].includes(event.key)) {
-        event.preventDefault();
-        const target = event.key === 'Home' ? 0 : document.getElementById('field-notes').value.length;
-        finishActiveNotes();
-        focusNotesAtOffset(target);
-        return;
-    }
-    if (event.key !== 'Enter' || event.shiftKey || area.selectionStart !== area.selectionEnd) {
-        return;
-    }
-    const before = area.value.slice(0, cursor);
-    const after = area.value.slice(cursor);
-    const fenced = /^\s*(```|~~~)/.test(area.value);
-    const heading = /^#{1,6}\s+[^\n]*$/.test(before);
-    const equation = mathToken(area.value.trim(), true);
-    const completeEquation = equation && equation.raw === area.value.trim();
-    if (!after.trim() && !fenced && (before.endsWith('\n') || heading || completeEquation)) {
-        event.preventDefault();
-        const separator = before.endsWith('\n') ? '\n' : '\n\n';
-        area.setRangeText(separator, cursor, cursor, 'end');
-        const target = active.start + area.selectionStart;
-        syncActiveNotes();
-        finishActiveNotes();
-        focusNotesAtOffset(target);
-    }
+function focusNotesAtOffset(start, end = start) {
+    const view = notesEditor.view;
+    if (!view || document.getElementById('field-notes').disabled) return;
+    const anchor = Math.max(0, Math.min(view.state.doc.length, start));
+    const head = Math.max(0, Math.min(view.state.doc.length, end));
+    notesEditor.focused = true;
+    view.dispatch({ selection: { anchor, head }, effects: refreshNotes.of(null), scrollIntoView: true });
+    view.focus();
 }
 
 function updateNotesPreview() {
-    if (!notesMarkdown) {
-        return;
-    }
+    const view = notesEditor.view;
+    if (!view || notesEditor.syncing) return;
     const source = document.getElementById('field-notes');
-    const live = notesPreviewEnabled();
-    source.hidden = live;
-    document.getElementById('notes-preview').hidden = !live;
-    const sameNode = notesEditor.nodeId === selectedNodeId;
-    if (!sameNode || notesEditor.source !== source.value) {
-        const selection = sameNode ? getNotesSelection() : null;
-        const focused = document.activeElement === notesEditor.active?.area;
-        const preferredStart = notesEditor.active?.start;
-        renderNotesBlocks();
-        if (live && focused && selection) {
-            focusNotesAtOffset(...selection, preferredStart);
-        }
-    } else if (!notesEditor.active && live && !document.getElementById('notes-preview').children.length) {
-        renderNotesBlocks();
-    }
+    source.hidden = true;
+    document.getElementById('notes-preview').hidden = false;
+    const changedNode = notesEditor.nodeId !== selectedNodeId;
+    const changedSource = view.state.doc.toString() !== source.value;
+    const accessChanged = view.state.readOnly !== source.disabled;
+    if (!changedNode && !changedSource && !accessChanged) return;
+    notesEditor.syncing = true;
+    notesEditor.nodeId = selectedNodeId;
+    const selection = changedNode ? { anchor: 0 } : { anchor: Math.min(source.value.length, view.state.selection.main.anchor), head: Math.min(source.value.length, view.state.selection.main.head) };
+    const effects = [refreshNotes.of(null)];
+    if (accessChanged) effects.push(notesAccess.reconfigure([notesCM.EditorState.readOnly.of(source.disabled), notesCM.EditorView.editable.of(!source.disabled)]));
+    view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: source.value }, selection, effects });
+    notesEditor.syncing = false;
 }
 
 function bindNotesEditor() {
@@ -273,60 +290,39 @@ function bindNotesEditor() {
     const source = document.getElementById('field-notes');
     const surface = document.getElementById('notes-preview');
     const preferenceKey = `${STORAGE_KEY}:notes-preview`;
-    try {
-        toggle.checked = localStorage.getItem(preferenceKey) !== 'false';
-    } catch (error) {
-        // Notes editing does not depend on browser preferences being available.
-    }
+    try { toggle.checked = localStorage.getItem(preferenceKey) !== 'false'; } catch (error) { /* Editing remains available without browser preferences. */ }
+    source.hidden = true;
+    const focusChanged = () => {
+        requestAnimationFrame(() => {
+            const view = notesEditor.view;
+            notesEditor.focused = view.hasFocus;
+            view.dispatch({ effects: refreshNotes.of(null) });
+        });
+        return false;
+    };
+    notesEditor.view = new notesCM.EditorView({
+        parent: surface,
+        state: notesCM.EditorState.create({
+            doc: source.value,
+            extensions: [
+                notesCM.EditorState.lineSeparator.of('\n'),
+                notesCM.markdown({ extensions: notesMarkdownExtensions() }),
+                notesCM.EditorView.lineWrapping,
+                notesCM.drawSelection(),
+                notesCM.highlightSpecialChars(),
+                notesCM.keymap.of([...notesCM.defaultKeymap, notesCM.indentWithTab]),
+                notesAccess.of([notesCM.EditorState.readOnly.of(source.disabled), notesCM.EditorView.editable.of(!source.disabled)]),
+                notesDecorationField,
+                notesCM.EditorView.contentAttributes.of({ id: 'notes-live-input', 'aria-label': 'Notes', spellcheck: 'true' }),
+                notesCM.EditorView.domEventHandlers({ focus: focusChanged, blur: focusChanged }),
+                notesCM.EditorView.updateListener.of(update => { if (update.docChanged) syncActiveNotes(); })
+            ]
+        })
+    });
     toggle.addEventListener('change', () => {
-        const selection = getNotesSelection();
-        const preferredStart = notesEditor.active?.start;
-        finishActiveNotes();
-        updateNotesPreview();
-        if (!toggle.checked && selection) {
-            focusNotesAtOffset(...selection, preferredStart);
-        }
-        try {
-            localStorage.setItem(preferenceKey, String(toggle.checked));
-        } catch (error) {
-            // Toggling remains usable without persistent preferences.
-        }
+        notesEditor.view.dispatch({ effects: refreshNotes.of(null) });
+        try { localStorage.setItem(preferenceKey, String(toggle.checked)); } catch (error) { /* Toggling remains usable without persistent preferences. */ }
     });
     source.addEventListener('input', updateNotesPreview);
-    const editBlock = event => {
-        if (source.disabled) {
-            return;
-        }
-        const block = event.target.closest('.notes-rendered-block');
-        if (!block && event.target !== surface) {
-            return;
-        }
-        event.preventDefault();
-        let start = block ? Number(block.dataset.start) : source.value.length;
-        let end = block ? Number(block.dataset.end) : start;
-        if (block && notesEditor.active && start >= notesEditor.active.originalEnd) {
-            const delta = notesEditor.active.area.value.length - (notesEditor.active.originalEnd - notesEditor.active.start);
-            start += delta;
-            end += delta;
-        }
-        finishActiveNotes();
-        const content = source.value.slice(start, end);
-        const cursor = start + content.replace(/\n+$/, '').length;
-        focusNotesAtOffset(cursor, cursor, start);
-    };
-    surface.addEventListener('pointerdown', editBlock);
-    surface.addEventListener('click', event => {
-        if (!event.isTrusted || event.detail === 0) {
-            editBlock(event);
-        }
-    });
-    surface.addEventListener('keydown', event => {
-        if (event.target === surface && event.key === 'Enter') {
-            event.preventDefault();
-            focusNotesAtOffset(source.value.length);
-        } else if (event.target.classList.contains('notes-rendered-block') && ['Enter', ' '].includes(event.key)) {
-            editBlock(event);
-        }
-    });
     updateNotesPreview();
 }

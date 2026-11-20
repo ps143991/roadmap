@@ -119,9 +119,9 @@ Markdown *emphasis* and **bold**.
         await pause(250);
         check(preview.querySelectorAll('.katex').length === 4, 'Expected four rendered inline/display equations; got ' + preview.querySelectorAll('.katex').length);
         check(preview.querySelectorAll('.katex-display').length === 2, 'Display equations did not render');
-        check(preview.querySelector('strong')?.textContent === 'bold' && preview.querySelector('em')?.textContent === 'emphasis', 'Markdown did not render');
-        check(preview.querySelector('code')?.textContent === '$literal$', 'Math inside code should stay literal');
-        check(!preview.querySelector('img, script, iframe') && !window.notesInjected, 'Preview executed or loaded raw HTML');
+        check(preview.querySelector('.notes-strong')?.textContent === 'bold' && preview.querySelector('.notes-emphasis')?.textContent === 'emphasis', 'Markdown did not render');
+        check(preview.querySelector('.notes-inline-code')?.textContent === '$literal$', 'Math inside code should stay literal');
+        check(!preview.querySelector('script, iframe, img:not(.cm-widgetBuffer), .cm-widgetBuffer[src]') && !window.notesInjected, 'Preview executed or loaded raw HTML');
         check(![...preview.querySelectorAll('a')].some(a => a.getAttribute('href')?.startsWith('javascript:')), 'Unsafe Markdown link survived');
         check(notes.value === sample, 'Preview changed the source');
         check(notes.hidden && !preview.hidden && preview.getBoundingClientRect().height >= 850, 'The single Notes surface became smaller or still shows split panels');

@@ -23,11 +23,11 @@ Expand a chapter to see its tasks, and hide the sidebar to give the map more roo
 <details>
 <summary>Notes with live Markdown and LaTeX preview</summary>
 
-Write and read notes in one panel. Click a paragraph or equation to edit its
-source; finished blocks render in place. The example equation and Broad Features
-guide are included in the starter Notes.
+Write and read notes in one continuous editor. Only the formula or formatted
+phrase at the cursor exposes its source; everything else stays rendered. The
+example equation and Broad Features guide are included in the starter Notes.
 
-![Single-panel Notes with a rendered equation and the Broad Features guide](docs/notes-latex.png)
+![Notes with only the inline equation at the cursor showing its source, while the other equation and Broad Features remain rendered](docs/notes-latex.png)
 
 </details>
 
@@ -110,11 +110,12 @@ keep exported copies if you want longer-term versions.
 
 ## Example equation
 
-Notes render Markdown and equations in the same panel where you edit them. Click
-a paragraph or equation to edit its source. Move to another block, click outside,
-or enter a blank line to render the finished block. Headings and complete display
-equations render when you press Enter. Turn **Live preview** off to edit the whole
-note as plain source; the preference is remembered.
+Notes render Markdown and equations inside a continuous editor. Move the cursor
+into a formula or formatted phrase to reveal only that unit's syntax. Move out
+of it to restore its rendered form, even within the same paragraph or list item.
+The surrounding text stays rendered and ordinary text keeps a consistent weight
+and color. Turn **Live preview** off to see all the source in the same editor;
+the preference is remembered.
 
 The starter Notes include this example:
 
@@ -133,7 +134,7 @@ $$\bar{x} = \frac{1}{n} \sum_{i=1}^{n} x_i$$
 - Your work saves automatically, including your last edits before you close the app.
 - A backup keeps the previous saved version of your roadmap.
 - Undo and redo changes with Ctrl+Z and Ctrl+Y, or use the toolbar buttons.
-- Write notes with headings, lists, and equations in one panel. Finished paragraphs render in place; click them to edit again.
+- Write notes with headings, lists, and equations in one editor. Only the formatting at your cursor shows its source; the rest stays rendered.
 - Drag the sidebar divider to resize it, or use the little arrow to hide it and bring it back.
 - Add start dates and deadlines, then use the Gantt view to see your plan over time.
 - Export a copy of your roadmap, or import a saved copy to continue working on it.
@@ -188,7 +189,10 @@ python3 roadmap_server.py 8767 --data-dir /path/to/my-thesis-data --open
 
 The frontend is static HTML/CSS/JavaScript, backed by a Python standard-library
 HTTP server. The native window uses GTK/WebKit. Preview dependencies and their
-fonts are already in `vendor/`; no npm build step is needed.
+fonts are already in `vendor/`; no npm build step is needed to run the app.
+The cursor-based editor uses CodeMirror 6. From a repository checkout, rebuild its
+pinned offline bundle with `python3 tools/build_notes_editor.py` (network access
+is required).
 
 ```bash
 python3 -m unittest discover -s tests -v
