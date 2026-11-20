@@ -213,7 +213,7 @@ separate startup check can run under Xvfb for CI:
 ```bash
 xvfb-run -a python3 tests/check_desktop_startup.py
 xvfb-run -a python3 tests/check_notes_editor.py
-xvfb-run -a python3 tests/check_notes_paint.py
+xvfb-run -a -s "-screen 0 1920x1080x24" python3 tests/check_notes_paint.py
 ```
 
 The paint check compares actual window pixels while moving the caret through

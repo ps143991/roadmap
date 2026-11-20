@@ -22,4 +22,11 @@ jobs:
       - name: Cursor-local Notes, consistent text styling, and persistence
         run: dbus-run-session -- xvfb-run -a /usr/bin/python3 tests/check_notes_editor.py
       - name: Stable on-screen Notes pixels while moving the caret
-        run: dbus-run-session -- xvfb-run -a /usr/bin/python3 tests/check_notes_paint.py
+        run: dbus-run-session -- xvfb-run -a -s "-screen 0 1920x1080x24" /usr/bin/python3 tests/check_notes_paint.py --output /tmp/notes-paint
+      - name: Save paint diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: notes-paint-failure
+          path: /tmp/notes-paint/
+          retention-days: 7
