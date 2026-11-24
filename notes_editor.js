@@ -95,7 +95,7 @@ class NotesMathWidget extends notesCM.WidgetType {
         return this.math.text === other.math.text && this.math.from === other.math.from && this.math.to === other.math.to && this.block === other.block && this.math.display === other.math.display;
     }
     updateDOM(element) {
-        if (element.tagName !== (this.block ? 'DIV' : 'SPAN') || element.dataset.tex !== this.math.text || element.dataset.display !== String(this.math.display)) return false;
+        if (element.tagName !== (this.block ? 'DIV' : 'SPAN') || element.dataset.tex !== this.math.text || element.dataset.display !== String(this.block)) return false;
         this.setOffsets(element);
         return true;
     }
@@ -108,9 +108,9 @@ class NotesMathWidget extends notesCM.WidgetType {
         const element = document.createElement(this.block ? 'div' : 'span');
         element.className = 'notes-math-widget';
         element.dataset.tex = this.math.text;
-        element.dataset.display = this.math.display;
+        element.dataset.display = this.block;
         this.setOffsets(element);
-        element.innerHTML = katex.renderToString(this.math.text, { displayMode: this.math.display, throwOnError: false, trust: false, strict: 'ignore', maxExpand: 1000 });
+        element.innerHTML = katex.renderToString(this.math.text, { displayMode: this.block, throwOnError: false, trust: false, strict: 'ignore', maxExpand: 1000 });
         element.setAttribute('aria-label', `Edit equation: ${this.math.text}`);
         element.addEventListener('pointerdown', event => {
             event.preventDefault();

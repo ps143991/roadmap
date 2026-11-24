@@ -640,6 +640,12 @@
         .notes-preview .notes-quote-line { border-left: 3px solid var(--border); padding-left: 12px; }
         .notes-preview .notes-list-line { padding-left: calc(6px + var(--notes-indent, 0em)); }
         .notes-preview .notes-list-marker { display: inline-block; min-width: 0.8em; font-weight: 400; }
+        /* Keep positioned equation glyphs inside an atomic box when surrounding text reflows. */
+        .notes-preview span.notes-math-widget {
+            display: inline-block;
+            vertical-align: baseline;
+        }
+
         .notes-preview .notes-math-widget { cursor: text; }
         .notes-preview .notes-math-widget .katex-display { overflow-x: auto; overflow-y: hidden; padding: 4px 0; }
 

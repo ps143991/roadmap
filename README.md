@@ -214,11 +214,15 @@ separate startup check can run under Xvfb for CI:
 xvfb-run -a python3 tests/check_desktop_startup.py
 xvfb-run -a python3 tests/check_notes_editor.py
 xvfb-run -a -s "-screen 0 1920x1080x24" python3 tests/check_notes_paint.py
+xvfb-run -a -s "-screen 0 1920x1080x24" python3 tests/check_notes_math_flow.py
 ```
 
 The paint check compares actual window pixels while moving the caret through
 unchanged prose. Also run it in a real desktop session when investigating GPU
 rendering problems; CSS values and offscreen snapshots can miss those artifacts.
+The math-flow check opens neighboring equations for editing, exercises line
+wrapping, and compares screen pixels with a fresh repaint to catch stale glyph
+positions even when the browser reports correct layout coordinates.
 
 ```bash
 python3 tests/check_notes_paint.py --zoom 1.1
