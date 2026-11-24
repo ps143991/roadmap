@@ -115,7 +115,11 @@ function updateBranchDrag(event) {
         commitEditor();
         drag.active = true;
         document.body.classList.add('branch-dragging');
-        drag.group.selectAll('g.node').filter(d => drag.ids.has(d.data.id)).classed('branch-dragging', true).raise();
+        drag.group.selectAll('g.node').filter(d => drag.ids.has(d.data.id)).classed('branch-dragging', true);
+        // Move other cards behind the subtree without detaching the node holding pointer capture.
+        drag.group.selectAll('g.node').filter(d => !drag.ids.has(d.data.id)).each(function () {
+            this.parentNode.insertBefore(this, drag.element);
+        });
         drag.marker = drag.group.append('line').attr('class', 'branch-drop-marker');
         drag.frame = requestAnimationFrame(scrollBranchDrag);
     }
@@ -200,7 +204,9 @@ function bindBranchDrag(nodes, group) {
         if (event.button !== 0 || !d.parent || d.parent.children.length < 2 || branchDrag) {
             return;
         }
+        event.preventDefault();
         const drag = { pointerId: event.pointerId, element: this, node: d, group, start: d3.pointer(event, group.node()), ids: new Set(d.descendants().map(item => item.data.id)), ready: false, active: false, lastEvent: event };
+        this.focus({ preventScroll: true });
         branchDrag = drag;
         this.setPointerCapture(event.pointerId);
         drag.timer = window.setTimeout(() => {

@@ -427,13 +427,14 @@
         .node.reorderable {
             cursor: grab;
             touch-action: none;
+            -webkit-user-select: none;
             user-select: none;
         }
 
-        .node.reorderable rect,
-        .node.reorderable circle,
-        .node.reorderable text {
+        .node.reorderable * {
             cursor: inherit;
+            -webkit-user-select: none;
+            user-select: none;
         }
 
         .node.branch-ready rect,
@@ -449,6 +450,7 @@
         body.branch-dragging,
         body.branch-dragging * {
             cursor: grabbing !important;
+            -webkit-user-select: none;
             user-select: none;
         }
 

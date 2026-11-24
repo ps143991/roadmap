@@ -205,9 +205,12 @@ and saving using a temporary profile:
 
 ```bash
 python3 tests/check_roadmap_features.py
+python3 tests/check_branch_drag.py
 ```
 
-It requires an X11 session and libXtst in addition to the desktop runtime. A
+These require an X11 session and libXtst in addition to the desktop runtime. The
+drag check uses real pointer gestures on first, middle, last, and nested card
+labels and backgrounds, and checks selection, saving, undo, and cancellation. A
 separate startup check can run under Xvfb for CI:
 
 ```bash
